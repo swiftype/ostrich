@@ -146,5 +146,56 @@ class TimeSeriesCollectorSpec extends SpecificationWithJUnit {
         }
       }
     }
+
+    "pruneStats() counter" in {
+      Time.withCurrentTimeFrozen { time =>
+        Stats.getCounter("whales.tps").incr(10)
+        collector.collector.periodic()
+
+        var json = collector.get("counter:whales.tps", Nil)
+        var data = Json.parse(json).asInstanceOf[Map[String, Seq[Seq[Number]]]]
+        data("counter:whales.tps")(58) mustEqual List(1.minute.ago.inSeconds, 0)
+        data("counter:whales.tps")(59) mustEqual List(Time.now.inSeconds, 10)
+
+        time.advance(1.minute)
+        Stats.removeCounter("whales.tps")
+
+        collector.collector.periodic()
+
+        try {
+          collector.get("counter:whales.tps", Nil)
+          fail("Expected counter to be removed by pruneStats()")
+        } catch {
+          case e: NoSuchElementException => {
+            e.getMessage mustEqual "key not found: counter:whales.tps"
+          }
+        }
+      }
+    }
+
+    "pruneStats() metric" in {
+      Time.withCurrentTimeFrozen { time =>
+        Stats.addMetric("run", 5)
+        collector.collector.periodic()
+
+        var json = collector.get("metric:run", Nil)
+        var data = Json.parse(json).asInstanceOf[Map[String, Seq[Seq[Number]]]]
+        data("metric:run")(59) mustEqual List(Time.now.inSeconds, 5, 5, 5, 5, 5, 5, 5, 5)
+
+        time.advance(1.minute)
+        Stats.removeMetric("run")
+
+        collector.collector.periodic()
+
+        try {
+          collector.get("metric:run", Nil)
+          fail("Expected metric to be removed by pruneStats()")
+        } catch {
+          case e: NoSuchElementException => {
+            e.getMessage mustEqual "key not found: metric:run"
+          }
+        }
+      }
+    }
   }
 }
