@@ -141,6 +141,26 @@ class StatsListenerSpec extends SpecificationWithJUnit {
         Map("beans" -> Histogram(3),
             "rice" -> Histogram())
     }
+
+    "does not leak memory" in {
+      collection.incr("a", 5)
+      collection.incr("b", 5)
+      val listener3 = new StatsListener(collection)
+
+      collection.incr("a", 10)
+      collection.incr("b", 20)
+
+      listener3.getCounters() mustEqual Map("a" -> 10, "b" -> 20)
+      listener3.getLastCounterMap() mustEqual Map("a" -> 15, "b" -> 25)
+
+      collection.removeCounter("a")
+      listener3.getCounters() mustEqual Map("b" -> 0)
+      listener3.getLastCounterMap() mustEqual Map("b" -> 25)
+
+      collection.incr("a", 10)
+      listener3.getCounters() mustEqual Map("a" -> 10, "b" -> 0)
+      listener3.getLastCounterMap() mustEqual Map("a" -> 10, "b" -> 25)
+    }
   }
 
   "LatchedStatsListener instance" should {

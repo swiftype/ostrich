@@ -103,10 +103,15 @@ class StatsListener(collection: StatsCollection, startClean: Boolean, filters: L
 
   def getCounters(): Map[String, Long] = synchronized {
     val deltas = new mutable.HashMap[String, Long]
-    for ((key, newValue) <- collection.getCounters()) {
+    val counters = collection.getCounters()
+
+    for ((key, newValue) <- counters) {
       deltas(key) = Stats.delta(lastCounterMap.getOrElse(key, 0), newValue)
       lastCounterMap(key) = newValue
     }
+
+    lastCounterMap.retain { case (k, v) => counters.contains(k) }
+
     deltas
   }
 
@@ -116,12 +121,17 @@ class StatsListener(collection: StatsCollection, startClean: Boolean, filters: L
 
   def getMetrics(): Map[String, Histogram] = synchronized {
     val deltas = new mutable.HashMap[String, Histogram]
-    for ((key, newValue) <- collection.getMetrics()) {
+    val metrics = collection.getMetrics()
+
+    for ((key, newValue) <- metrics) {
       val oldValue = lastMetricMap.getOrElseUpdate(key, new Histogram())
       deltas(key) = newValue.histogram - oldValue
       oldValue.clear()
       oldValue.merge(newValue.histogram)
     }
+
+    lastMetricMap.retain { case (k, v) => metrics.contains(k) }
+
     deltas
   }
 
@@ -132,6 +142,16 @@ class StatsListener(collection: StatsCollection, startClean: Boolean, filters: L
 
   def getFiltered(): StatsSummary = {
     get().filterOut(filterRegex)
+  }
+
+  // Visible for testing only
+  private[stats] def getLastCounterMap(): Map[String, Long] = {
+    lastCounterMap
+  }
+
+  // Visible for testing only
+  private[stats] def getLastMetricMap(): Map[String, Histogram] = {
+    lastMetricMap
   }
 }
 

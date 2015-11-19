@@ -1,3 +1,9 @@
+8.2.9-SWIFTYPE01
+----------------
+release: 19 November 2015
+
+- stop leaking memory everywhere
+
 8.2.9
 -----
 release: 16 October 2012
