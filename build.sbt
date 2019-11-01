@@ -1,6 +1,6 @@
 name := "ostrich"
 
-version := "9.1.1"
+version := "9.1.1-SWIFTYPE01"
 
 organization := "com.twitter"
 
